@@ -1,0 +1,7 @@
+nohup: ignoring input
+cuda:0
+Devices sample: ['NM1', 'NM1_D', 'NM1_G', 'NM1_S', 'NM1_B', 'NM2', 'NM2_D', 'NM2_G'] ... ['CIRCUIT_LDO', 'CIRCUIT_Bandgap_Ref', 'CIRCUIT_Single_Stage_Amp', 'CIRCUIT_Power_Amp', 'CIRCUIT_Voltage_Regulator', 'CIRCUIT_Filter', 'CIRCUIT_Switched_Cap', 'CIRCUIT_General']
+Vocabulary size: 1020
+Device to index mapping sample: {'NM1': 0, 'NM1_D': 1, 'NM1_G': 2, 'NM1_S': 3, 'NM1_B': 4, 'NM2': 5, 'NM2_D': 6, 'NM2_G': 7}
+Index to device mapping sample: {0: 'NM1', 1: 'NM1_D', 2: 'NM1_G', 3: 'NM1_S', 4: 'NM1_B', 5: 'NM2', 6: 'NM2_D', 7: 'NM2_G'}
+11.818236 M parameters
