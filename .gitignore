@@ -3,3 +3,8 @@
 *.npy
 *.pt
 *.ckpt
+*.pth
+*.npy
+*.npz
+*.pt
+*.ckpt
