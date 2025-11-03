@@ -1,0 +1,5 @@
+*.pth
+*.npz
+*.npy
+*.pt
+*.ckpt
