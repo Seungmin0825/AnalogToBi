@@ -1,10 +1,50 @@
+# Model checkpoints and weights
 *.pth
-*.npz
-*.npy
 *.pt
 *.ckpt
-*.pth
-*.npy
 *.npz
-*.pt
-*.ckpt
+*.npy
+*.safetensors
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and outputs
+*.log
+logs/
+outputs/
+results/
+checkpoints/
+
+# Large data (uncomment if needed)
+# Dataset/
+# Models/
