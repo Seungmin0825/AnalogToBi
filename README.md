@@ -108,7 +108,7 @@ Trains a Graph Attention Network classifier for circuit type classification.
 **Grammar-guided circuit generation**
 
 ```bash
-python GPT_Inference_Grammar.py
+python GPT_Inference_Grammar.py CIRCUIT_Opamp
 ```
 Generates circuit topologies using a 6-state grammar that enforces bipartite structure and electrical validity during decoding.
 
@@ -120,20 +120,6 @@ Generates circuit topologies using a 6-state grammar that enforces bipartite str
 python GAT_Inference_ALL.py
 ```
 Classifies all generated circuits and reports accuracy per circuit type.
-
-**Validity (ERC)**
-
-```bash
-python METRIC_Validity.py
-```
-Batch electrical rule checking across all generated circuits.
-
-**Novelty**
-
-```bash
-python METRIC_Novelty.py
-```
-Measures topology novelty via graph isomorphism against the training dataset.
 
 **Validity + Novelty (combined)**
 
