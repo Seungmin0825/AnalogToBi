@@ -48,3 +48,6 @@ checkpoints/
 # Large data (uncomment if needed)
 # Dataset/
 # Models/
+
+# Specific files
+GRAPH2SPICE.py

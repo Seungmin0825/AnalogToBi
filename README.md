@@ -36,7 +36,7 @@ conda activate AnalogToBi
 
 ## Dataset
 
-The `Dataset/` directory contains 3,350 raw analog circuit samples. Each numbered folder includes:
+The `Dataset/` directory contains raw analog circuit samples. Each numbered folder includes:
 
 | File | Description |
 |------|-------------|
