@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-GAT Classifier Training for Circuit Type Classification
+GAT Classifier Training for Circuit Type Classification (CLASS-WEIGHTED LOSS)
 
 This module trains a Graph Attention Network (GAT) classifier to predict the 
 functional type of analog circuits from their bipartite graph representations.
-The classifier achieves 99.91% accuracy on circuit type classification.
+Uses balanced class weights to handle data imbalance.
 
 Model Architecture:
     - 3 GAT layers with 4, 4, and 1 attention heads
@@ -16,10 +16,11 @@ Model Architecture:
 
 Training Configuration:
     - 100 epochs with Adam optimizer
-    - Learning rate: 5×10⁻⁴ with cosine annealing
+    - Learning rate: 1×10⁻⁴ with cosine annealing
     - Weight decay: 10⁻³
-    - Label smoothing: 0.1
+    - Label smoothing: 0.0
     - Gradient clipping: max norm 1.0
+    - CLASS-WEIGHTED LOSS: Balanced weights for imbalanced data
 
 Usage:
     python GAT_Train.py
@@ -32,13 +33,15 @@ import numpy as np
 import csv
 import time
 from datetime import datetime, timedelta
+from collections import Counter
+from sklearn.utils.class_weight import compute_class_weight
 from Models.GAT import GATClassifier
 
 # Hyperparameters
 batch_size = 512 
-learning_rate = 5e-4 
+learning_rate = 1e-4 
 num_epochs = 100
-label_smoothing = 0.1 
+label_smoothing = 0.0 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
 
@@ -53,8 +56,8 @@ num_layers = 3
 dropout = 0.3
 
 # File paths
-train_file = 'Training_renamed.npy'
-val_file = 'Validation_renamed.npy'
+train_file = 'Training_GAT.npy'
+val_file = 'Validation_GAT.npy'
 model_save_path = 'GAT_Classifier.pth'
 log_file = 'GAT_Train.csv'
 
@@ -281,8 +284,7 @@ def create_graph_data(seq, label):
         edges = []
         edge_attrs = [vss_idx]
     
-    # Node features: just token indices (will be embedded in model)
-    # This saves MASSIVE memory: 1020 floats → 1 int per node
+    # Node features
     x = torch.tensor(node_indices, dtype=torch.long)
     
     # Edge index and edge attributes
@@ -350,7 +352,7 @@ train_loader = DataLoader(train_graphs, batch_size=batch_size, shuffle=True, num
 val_loader = DataLoader(val_graphs, batch_size=batch_size, shuffle=False, num_workers=0)
 
 # Create model
-embedding_dim = 64  # Token embedding dimension (much smaller than one-hot)
+embedding_dim = 64  # Token embedding dimension
 model = GATClassifier(
     vocab_size=vocab_size,
     num_classes=num_classes,
@@ -368,9 +370,44 @@ nn.init.xavier_uniform_(model.edge_embedding.weight)
 num_params = sum(p.numel() for p in model.parameters())
 print(f"\nModel parameters: {num_params/1e6:.2f}M")
 
-# Loss and optimizer
-criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)  # Increased from 5e-4
+# Compute class weights for balanced training
+print("\nComputing class weights for balanced training...")
+train_labels = [graph.y.item() for graph in train_graphs]
+label_counts = Counter(train_labels)
+
+print(f"Training data distribution:")
+for label_idx in sorted(label_counts.keys()):
+    label_name = idx_to_label.get(label_idx, f"Unknown_{label_idx}")
+    count = label_counts[label_idx]
+    percentage = 100 * count / len(train_labels)
+    print(f"  {label_name}: {count} ({percentage:.1f}%)")
+
+# Compute balanced class weights
+unique_labels = np.array(sorted(label_counts.keys()))
+class_weights = compute_class_weight(
+    class_weight='balanced',
+    classes=unique_labels,
+    y=train_labels
+)
+
+# Create weight tensor for ALL classes (initialize to 1.0)
+all_class_weights = torch.ones(num_classes, dtype=torch.float32)
+
+# Assign computed weights to classes present in training data
+for label_idx, weight in zip(unique_labels, class_weights):
+    all_class_weights[label_idx] = weight
+
+class_weights_tensor = all_class_weights.to(device)
+
+print(f"\nClass weights (balanced):")
+for label_idx, weight in zip(unique_labels, class_weights):
+    label_name = idx_to_label.get(label_idx, f"Unknown_{label_idx}")
+    print(f"  {label_name}: {weight:.4f}")
+print(f"  Other classes (not in training): 1.0000")
+
+# Loss and optimizer with class weights
+criterion = nn.CrossEntropyLoss(weight=class_weights_tensor, label_smoothing=label_smoothing)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
 # Training function
@@ -440,17 +477,19 @@ def validate():
 
 # Training loop
 print("\n" + "="*70)
-print("GAT CLASSIFIER TRAINING")
+print("GAT CLASSIFIER TRAINING (CLASS-WEIGHTED LOSS)")
 print("="*70)
 print(f"Batch size: {batch_size}")
 print(f"Learning rate: {learning_rate}")
 print(f"Dropout: {dropout}")
 print(f"Weight decay: 1e-3")
 print(f"Label smoothing: {label_smoothing}")
+print(f"Using balanced class weights to handle data imbalance")
 print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("="*70)
 
 best_val_acc = 0
+best_val_loss = float('inf')
 training_start_time = time.time()
 
 with open(log_file, 'w', newline='') as f:
@@ -469,10 +508,11 @@ with open(log_file, 'w', newline='') as f:
         epoch_time_str = str(timedelta(seconds=int(epoch_time)))
         total_time_str = str(timedelta(seconds=int(total_time)))
         
-        # Save best model
+        # Save best model (best accuracy, ties broken by lowest loss)
         is_best = False
-        if val_acc > best_val_acc:
+        if val_acc > best_val_acc or (val_acc == best_val_acc and val_loss < best_val_loss):
             best_val_acc = val_acc
+            best_val_loss = val_loss
             is_best = True
             torch.save({
                 'epoch': epoch + 1,
