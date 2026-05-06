@@ -2,14 +2,15 @@
 
 **AnalogToBi: Device-Level Analog Circuit Topology Generation via Bipartite Graph and Grammar-Guided Decoding**
 
-AnalogToBi is a framework for automatic generation of device-level analog circuit topologies. It trains a compact decoder-only Transformer (11.3M parameters) from scratch and generates electrically valid, novel circuit topologies with explicit functional control.
+AnalogToBi is a framework for automatic generation of device-level analog circuit topologies. It trains a compact decoder-only Transformer (11.3M parameters) from scratch and generates electrically valid, novel circuit topologies.
 
 ## Key Features
 
-- **Circuit type token**: Explicit control over 15 functional circuit categories (OpAmp, LDO, Comparator, etc.)
+- **Circuit type conditioning**: Divide datasets as 15 circuit categories (OpAmp, LDO, Comparator, etc.)
+- **Device renaming augmentation**: Randomizes device numbering to prevent memorization while preserving topology
 - **Bipartite graph representation**: Decouples devices and nets into distinct node types for compact structural description
 - **Grammar-guided decoding**: State machine-based constrained decoding enforces electrical validity during generation
-- **Device renaming augmentation**: Randomizes device numbering to prevent memorization while preserving topology
+
 
 ## Bipartite Graph Representation
 
@@ -46,8 +47,6 @@ The `Dataset/` directory contains raw analog circuit samples. Each numbered fold
 | `Pagenumber{ID}.txt` | Page number or paper reference |
 | `Port{ID}.txt` | Netlist port information |
 
-See [Dataset/data_categorization.md](Dataset/data_categorization.md) for detailed categorization by source textbook and circuit type.
-
 ## Quick Start
 
 ### 1. Preprocessing
@@ -73,19 +72,35 @@ python PREPROCESSING_Add_Circuit_Types.py
 ```
 Prepends circuit type tokens (e.g., `CIRCUIT_Opamp`) to each sequence for conditional generation.
 
-**Step 4: Stratified train/validation split**
+**Step 4: Prepare GPT training dataset**
 
 ```bash
-python PREPROCESSING_Stratified_Split.py
+python PREPROCESSING_GPT_dataset.py
 ```
-Performs 90/10 stratified split preserving circuit type distribution.
+Performs 90/10 stratified split preserving circuit type distribution for GPT training.
 
 **Step 5: Device renaming augmentation**
 
 ```bash
-python PREPROCESSING_Renaming.py
+python PREPROCESSING_Renaming.py --input Training.npy --output Training_renamed.npy
+python PREPROCESSING_Renaming.py --input Validation.npy --output Validation_renamed.npy
 ```
 Randomizes device numbering (e.g., NM1 -> NM5) while preserving topology to prevent memorization.
+
+**Step 6: Prepare GAT training dataset**
+
+```bash
+python PREPROCESSING_GAT_dataset.py
+```
+Performs circuit-ID-based 90/10 split to prevent data leakage in GAT training.
+
+**Step 7: Device renaming augmentation for GAT dataset**
+
+```bash
+python PREPROCESSING_Renaming.py --input Training_GAT.npy --output Training_GAT_renamed.npy
+python PREPROCESSING_Renaming.py --input Validation_GAT.npy --output Validation_GAT_renamed.npy
+```
+Applies device renaming augmentation to the GAT dataset.
 
 ### 2. Training
 
@@ -128,48 +143,36 @@ python METRIC_Valid_n_Novel.py
 ```
 Reports combined ERC pass rate and novelty per circuit type.
 
-**N-gram memorization analysis**
+**Exact sequence matching novelty**
 
 ```bash
-python METRIC_N_Gram.py
+python METRIC_ExactMatching.py
 ```
-Measures training data memorization using 10-gram matching.
+Measures novelty by checking whether generated sequences exactly match any sequence in the training set.
 
-### 5. Utilities
-
-**SPICE netlist conversion**
-
-```bash
-python GRAPH2SPICE.py
-```
-Converts generated sequences to SPICE netlists with automatic voltage biasing.
 
 ## Project Structure
 
 ```
 AnalogToBi/
-├── Dataset/                              # Raw circuit dataset (3,350 samples)
+├── Dataset/                                  # Raw circuit dataset
 ├── Models/
-│   ├── GPT.py                            # GPT model architecture
-│   └── GAT.py                            # GAT classifier architecture
-├── PREPROCESSING_Bipartite.py            # Step 1: Netlist to bipartite graph
-├── PREPROCESSING_Augmentation_Bipart.py  # Step 2: Graph to sequence + augmentation
-├── PREPROCESSING_Add_Circuit_Types.py    # Step 3: Circuit type token injection
-├── PREPROCESSING_Stratified_Split.py     # Step 4: Stratified train/val split
-├── PREPROCESSING_Renaming.py            # Step 5: Device renaming augmentation
-├── GPT_Pretrain.py                       # GPT training
-├── GAT_Train.py                          # GAT classifier training
-├── GPT_Inference_Grammar.py              # Grammar-guided generation
-├── GAT_Inference_ALL.py                  # Batch GAT classification
-├── METRIC_Validity.py                    # ERC pass rate evaluation
-├── METRIC_Novelty.py                     # Topology novelty evaluation
-├── METRIC_Valid_n_Novel.py               # Combined validity + novelty
-├── METRIC_N_Gram.py                      # Memorization analysis
-├── ERC.py                                # Electrical rule checker
-├── GRAPH2SPICE.py                        # Sequence to SPICE converter
-└── environment.yml                       # Conda environment
+│   ├── GPT.py                                # GPT model architecture
+│   └── GAT.py                                # GAT classifier architecture
+├── PREPROCESSING_Bipartite.py                # Step 1: Netlist to bipartite graph
+├── PREPROCESSING_Augmentation_Bipart.py      # Step 2: Graph to sequence + augmentation
+├── PREPROCESSING_Add_Circuit_Types.py        # Step 3: Circuit type token injection
+├── PREPROCESSING_GPT_dataset.py              # Step 4: Stratified train/val split (GPT)
+├── PREPROCESSING_Renaming.py                 # Step 5: Device renaming augmentation
+├── PREPROCESSING_GAT_dataset.py              # Step 6: Circuit-ID-based split (GAT)
+├── GPT_Pretrain.py                           # GPT training
+├── GAT_Train.py                              # GAT classifier training
+├── GPT_Inference_Grammar.py                  # Grammar-guided generation
+├── GAT_Inference_ALL.py                      # Batch GAT classification
+├── METRIC_Validity.py                        # ERC pass rate evaluation
+├── METRIC_Novelty.py                         # Topology novelty evaluation
+├── METRIC_Valid_n_Novel.py                   # Combined validity + novelty
+├── METRIC_ExactMatching.py                   # Exact sequence matching novelty
+├── ERC.py                                    # Electrical rule checker
+└── environment.yml                           # Conda environment
 ```
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

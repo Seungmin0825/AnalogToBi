@@ -56,8 +56,8 @@ num_layers = 3
 dropout = 0.3
 
 # File paths
-train_file = 'Training_GAT.npy'
-val_file = 'Validation_GAT.npy'
+train_file = 'Training_GAT_renamed.npy'
+val_file = 'Validation_GAT_renamed.npy'
 model_save_path = 'GAT_Classifier.pth'
 log_file = 'GAT_Train.csv'
 
