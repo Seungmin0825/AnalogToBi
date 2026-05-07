@@ -83,9 +83,8 @@ Performs 90/10 stratified split preserving circuit type distribution for GPT tra
 
 ```bash
 python PREPROCESSING_Renaming.py --input Training.npy --output Training_renamed.npy
-python PREPROCESSING_Renaming.py --input Validation.npy --output Validation_renamed.npy
 ```
-Randomizes device numbering (e.g., NM1 -> NM5) while preserving topology to prevent memorization.
+Randomizes device numbering (e.g., NM1 -> NM5) while preserving topology to prevent memorization. Automatically processes `Validation.npy` → `Validation_renamed.npy` when using default arguments.
 
 **Step 6: Prepare GAT training dataset**
 
