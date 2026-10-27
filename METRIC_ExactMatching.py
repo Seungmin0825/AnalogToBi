@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """
-Exact Sequence Matching Novelty Metric for AnalogGenie with FT
+Exact sequence matching novelty
 
 Measures novelty by checking if generated sequences exactly match
-any sequence in the training dataset. Any sequence NOT found in
-Training.npy is considered novel.
+any sequence in the training set (Training_renamed.npy when present,
+otherwise Training.npy). Any sequence not found there is considered novel.
 
-Analyzes single inference folder: Inference/
+Scans a run directory given as an argument (default: this package directory)
+for a single Inference/ folder or several Inference_*/ folders of run*.txt files.
 
 Metric: Binary classification (Novel vs Memorized)
-- Novel: Sequence NOT in Training.npy
-- Memorized: Exact match found in Training.npy
+- Novel: sequence not in the training set
+- Memorized: exact match found in the training set
 """
 
 import numpy as np
 import os
+import argparse
 from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
@@ -45,7 +47,7 @@ def parse_txt_file(file_path):
     tokens = [t.strip() for t in content.split('->') if t.strip()]
     
     # Remove TRUNCATE tokens
-    tokens = [t for t in tokens if t != 'TRUNCATE']
+    tokens = [t for t in tokens if t not in ('TRUNCATE', 'End')]
     
     return tuple(tokens)
 
@@ -63,7 +65,7 @@ def normalize_sequence(seq):
     tokens = []
     for token in seq:
         token_str = str(token).strip()
-        if token_str == 'TRUNCATE' or token_str == '':
+        if token_str in ('TRUNCATE', 'End') or token_str == '':
             break
         tokens.append(token_str)
     
@@ -189,8 +191,8 @@ def find_inference_folders(base_dir):
     Auto-detect inference folder structure.
 
     Two patterns supported:
-    1. Single 'Inference/' folder with run*.txt files (AnalogGenie style)
-    2. Multiple 'Inference_*/' folders each with run*.txt files (AnalogToBi style)
+    1. Single 'Inference/' folder with run*.txt files
+    2. Multiple 'Inference_*/' folders each with run*.txt files (one per circuit type)
 
     Returns:
         List of Path objects to inference folders that contain run*.txt files
@@ -210,6 +212,14 @@ def find_inference_folders(base_dir):
 
 
 def main():
+    """Command-line entry point."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('run_dir', nargs='?', default=str(BASE_DIR),
+                        help='generation run directory holding the Inference_* folders '
+                             '(default: this package directory)')
+    args = parser.parse_args()
+    run_dir = Path(args.run_dir)
+
     start_time = time.time()
     
     print("="*70)
@@ -224,9 +234,9 @@ def main():
     training_sequences = build_training_set_index(TRAINING_NPY)
     
     # Auto-detect inference folders
-    inference_folders = find_inference_folders(BASE_DIR)
+    inference_folders = find_inference_folders(run_dir)
     if not inference_folders:
-        print(f"\nError: No inference folders with run*.txt files found in {BASE_DIR}")
+        print(f"\nError: No inference folders with run*.txt files found in {run_dir}")
         return
     
     print(f"\nDetected {len(inference_folders)} inference folder(s)")
@@ -250,7 +260,7 @@ def main():
     if len(all_results) > 1:
         for r in all_results:
             print(f"  [{r['folder']}] total={r['total']} novel={r['novel']} ({r['novelty_rate']:.1f}%)")
-        print(f"{'─'*70}")
+        print(f"{'-'*70}")
     print(f"Total generated: {total_all}")
     print(f"Novel:           {novel_all} ({novelty_rate_all:.2f}%)")
     print(f"Memorized:       {memorized_all} ({memorized_all/total_all*100:.2f}%)" if total_all > 0 else "Memorized:       0")
@@ -259,7 +269,7 @@ def main():
         print(f"Errors:          {errors_all}")
     
     # Save results as JSON
-    output_file = BASE_DIR / 'NOVELTY_ExactMatching_Results.json'
+    output_file = run_dir / 'NOVELTY_ExactMatching_Results.json'
     
     summary = {
         'method': 'exact_sequence_matching',

@@ -7,14 +7,14 @@ with typed edges, saved as adjacency matrices in CSV format.
 Bipartite Graph Structure:
 - Device nodes: MOSFETs (NM1, PM1), BJTs (NPN1, PNP1), passives (R1, C1, L1), diodes (DIO1)
 - Net nodes: External ports (VIN1, VOUT, VDD, VSS) and internal nets (NET1, NET2, ...)
-- Typed edges: Encode pin-level connections (e.g., M_D, M_G, M_SB for MOSFETs)
+- Typed edges: Encode pin-level connections (e.g., M_D, M_G, M_BS for MOSFETs)
 
 Example Transformation:
   Input netlist:  MM9 (VOUT1 net12 VSS VSS) nmos4
   Output graph:
     - Device node: NM9
-    - Typed edges: NM9 -[M_D]-> VOUT1, NM9 -[M_G]-> NET1, NM9 -[M_SB]-> VSS
-    - CSV entry: adj[NM9][VOUT1] = "M_D", adj[NM9][NET1] = "M_G", adj[NM9][VSS] = "M_SB"
+    - Typed edges: NM9 -[M_D]-> VOUT1, NM9 -[M_G]-> NET1, NM9 -[M_BS]-> VSS
+    - CSV entry: adj[NM9][VOUT1] = "M_D", adj[NM9][NET1] = "M_G", adj[NM9][VSS] = "M_BS"
 
 Key Features:
 - Filters out digital components (e.g., logic gates, clock signals)
@@ -362,7 +362,7 @@ def create_bipartite_graph(cir_file):
         
         vertices.add(device_vertex)
         
-        # Group pins by net to create typed edges (e.g., M_GD if G and D connect to same net)
+        # Group pins by net to create typed edges (e.g., M_DG if G and D connect to same net)
         net_to_pins = defaultdict(list)
         for pin, net in zip(pins, nets):
             normalized_net = net_mapping[net]
@@ -381,7 +381,7 @@ def create_bipartite_graph(cir_file):
                 pin_suffix = ''.join(pin_list_sorted)
                 pin_type = f'{prefix}_{pin_suffix}'
             else:
-                # Active devices (MOSFET, BJT): M_D, M_G, M_SB, B_C, B_BE, etc.
+                # Active devices (MOSFET, BJT): M_D, M_G, M_BS, B_C, B_BE, etc.
                 # Sort for consistent naming (e.g., always "BS" not "SB")
                 pin_list_sorted = sorted(pin_list)
                 pin_suffix = ''.join(pin_list_sorted)
@@ -443,30 +443,37 @@ def save_adjacency_matrix(vertices, edges, output_file):
 # Main Processing Pipeline
 # =========================
 
+def circuit_ids(dataset_dir):
+    """Numbered circuit folders present under dataset_dir, in numeric order.
+
+    The ids are sparse, so the folders are listed rather than a fixed range
+    being scanned: the count follows whatever the directory actually holds.
+    """
+    if not os.path.isdir(dataset_dir):
+        return []
+    return sorted((entry.name for entry in os.scandir(dataset_dir)
+                   if entry.is_dir() and entry.name.isdigit()), key=int)
+
+
 def process_dataset(dataset_dir='Dataset'):
     """Process entire dataset and convert all circuits to bipartite graphs.
     
-    Processes circuit folders numbered 1 to 3502, generating CSV adjacency
-    matrices for each valid analog circuit. Digital circuits are automatically
-    filtered out.
+    Generates a CSV adjacency matrix for each valid analog circuit folder found
+    under dataset_dir. Digital circuits are automatically filtered out.
     
     Args:
         dataset_dir: Root directory containing numbered circuit folders
     """
-    print(f"Processing circuits from {dataset_dir}...")
+    ids = circuit_ids(dataset_dir)
+    print(f"Processing {len(ids)} circuits from {dataset_dir}...")
     
     success_count = 0
     skip_count = 0
     error_count = 0
     
     # Process all circuit folders
-    for circuit_id in tqdm(range(1, 3503), desc="Converting to bipartite graphs"):
-        folder = str(circuit_id)
-        folder_path = os.path.join(dataset_dir, folder)
-        
-        # Skip if folder doesn't exist (some numbers are missing)
-        if not os.path.isdir(folder_path):
-            continue
+    for circuit_id in tqdm(ids, desc="Converting to bipartite graphs"):
+        folder_path = os.path.join(dataset_dir, circuit_id)
         
         cir_file = os.path.join(folder_path, f'{circuit_id}.cir')
         output_file = os.path.join(folder_path, f'Graph_Bipart{circuit_id}.csv')
@@ -490,7 +497,7 @@ def process_dataset(dataset_dir='Dataset'):
             print(f"\nError processing {circuit_id}: {e}")
     
     print("\n" + "="*60)
-    print(f"Processing complete!")
+    print("Processing complete")
     print(f"  Success: {success_count}")
     print(f"  Skipped: {skip_count}")
     print(f"  Errors: {error_count}")

@@ -1,10 +1,13 @@
-# Model checkpoints and weights
+# Stray model and array files, but not the ones this package ships
 *.pth
 *.pt
 *.ckpt
 *.npz
 *.npy
 *.safetensors
+!checkpoints/*.pth
+!checkpoints/*.csv
+!data/*.npz
 
 # Python
 __pycache__/
@@ -39,16 +42,10 @@ ENV/
 Thumbs.db
 
 # Logs and outputs
+runs/
+SPICE_Inference_*/
+batch_results/
 *.log
 logs/
 outputs/
 results/
-checkpoints/
-
-# Large data (uncomment if needed)
-# Dataset/
-# Models/
-
-# Specific files
-GRAPH2SPICE.py
-LICENSE

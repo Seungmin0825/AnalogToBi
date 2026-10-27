@@ -1,3 +1,11 @@
+"""
+Graph attention network for circuit type classification.
+
+A generated walk is converted to a graph whose nodes are device and net tokens
+and whose edges carry the typed pin connection. The classifier embeds both,
+applies GATConv layers with edge features, pools the node representations and
+predicts one of the circuit types.
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,6 +13,7 @@ from torch_geometric.nn import GATConv, global_mean_pool, global_max_pool
 
 
 class GATClassifier(nn.Module):
+    """GAT classifier over token-embedded circuit graphs; see the module docstring."""
     def __init__(self, vocab_size, num_classes, embedding_dim=64, hidden_dim=128, num_heads=4, num_layers=3, dropout=0.3):
         """
         GAT-based circuit classifier
@@ -23,7 +32,7 @@ class GATClassifier(nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         
-        # Embedding layers (token index → embedding vector)
+        # Embedding layers (token index -> embedding vector)
         # Node embedding
         self.node_embedding = nn.Embedding(vocab_size, embedding_dim)
         # Edge type embedding

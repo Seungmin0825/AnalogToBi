@@ -5,7 +5,7 @@ This script implements device renaming augmentation to prevent overfitting by
 randomizing device numbering while preserving circuit functionality and topology.
 
 Renaming Strategy:
-- Device tokens: Randomly permute numbers (e.g., NM1→NM5, PM2→PM15)
+- Device tokens: Randomly permute numbers (e.g., NM1->NM5, PM2->PM15)
 - Consistency: All occurrences of a device renamed identically
 - Preservation: External pins (VDD, VSS, ports), net nodes (NET1-50), 
   edge types (M_D, M_G, etc.), and circuit types remain unchanged
@@ -30,7 +30,7 @@ import argparse
 # =========================
 # Device Type Configuration
 # =========================
-# Maximum device numbers for each type (aligned with vocabulary in GPT_Pretrain.py)
+# Maximum device numbers for each type (aligned with vocabulary in CORE_Vocab.py)
 DEVICE_CONFIGS = {
     'NM': {'max': 35},   # NM1-NM35
     'PM': {'max': 35},   # PM1-PM35
@@ -45,7 +45,7 @@ DEVICE_CONFIGS = {
 # =========================
 # Protected Tokens (Not Renamed)
 # =========================
-# External interface tokens that must remain unchanged
+# Power rails, ground and the padding token: never renamed
 EXTERNAL_PINS = {
     'VDD', 'VSS', 'GND', 'TRUNCATE',
 }
@@ -98,7 +98,7 @@ EDGE_TYPES = {
     'D_P', 'D_N', 'D_NP', 'D_PN'
 }
 
-# Internal net node pattern (NET1, NET2, ..., NET50)
+# Internal net node pattern; the vocabulary in CORE_Vocab.py defines the range
 NET_PATTERN = re.compile(r'^NET\d+$')
 
 
@@ -251,7 +251,7 @@ def rename_dataset(input_file, output_file):
     renamed_data = []
     
     for i, circuit in enumerate(tqdm(data, desc="Processing circuits")):
-        # Generate deterministic seed based on circuit content and index
+        # seed from the circuit content and the version index
         seed = hash((tuple(circuit), i)) % (2**31)
         renamed = randomize_device_numbers(circuit.tolist(), seed=seed)
         renamed_data.append(renamed)
@@ -330,7 +330,7 @@ def main():
                     original_devices[orig] = ren
         
         for orig in sorted(original_devices.keys()):
-            print(f"{orig} → {original_devices[orig]}")
+            print(f"{orig} -> {original_devices[orig]}")
             
     else:
         # Full renaming
