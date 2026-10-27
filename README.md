@@ -102,8 +102,7 @@ AnalogToBi/
 |   `-- GAT.py                        circuit type classifier
 |-- checkpoints/
 |   |-- AnalogToBi.pth                the released generator (11.3M params)
-|   |-- GAT_Classifier.pth            type classifier, for Type Accuracy
-|   `-- GAT_Classifier_train_log.csv  its training log (loss / accuracy per epoch)
+|   `-- GAT_Classifier.pth            type classifier, for Type Accuracy
 |
 |-- CORE_ERC.py                       electrical rule checks
 |-- CORE_Grammar.py                   vocabulary + grammar state machine + decoding

@@ -6,7 +6,6 @@
 *.npy
 *.safetensors
 !checkpoints/*.pth
-!checkpoints/*.csv
 !data/*.npz
 
 # Python
